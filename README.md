@@ -1,14 +1,27 @@
 # rCore-Tutorial-Code-2023A
+# rCore-Tutorial-Code-2023A
 
 ### Code
 - [Soure Code of labs for 2023A](https://github.com/LearningOS/rCore-Tutorial-Code-2023A)
+- [Soure Code of labs for 2023A](https://github.com/LearningOS/rCore-Tutorial-Code-2023A)
 ### Documents
 
+- Concise Manual: [rCore-Tutorial-Guide-2023A](https://LearningOS.github.io/rCore-Tutorial-Guide-2023A/)
 - Concise Manual: [rCore-Tutorial-Guide-2023A](https://LearningOS.github.io/rCore-Tutorial-Guide-2023A/)
 
 - Detail Book [rCore-Tutorial-Book-v3](https://rcore-os.github.io/rCore-Tutorial-Book-v3/)
 
 
+### OS API docs of rCore Tutorial Code 2023A
+- [OS API docs of ch1](https://learningos.github.io/rCore-Tutorial-Code-2023A/ch1/os/index.html)
+  AND [OS API docs of ch2](https://learningos.github.io/rCore-Tutorial-Code-2023A/ch2/os/index.html)
+- [OS API docs of ch3](https://learningos.github.io/rCore-Tutorial-Code-2023A/ch3/os/index.html)
+  AND [OS API docs of ch4](https://learningos.github.io/rCore-Tutorial-Code-2023A/ch4/os/index.html)
+- [OS API docs of ch5](https://learningos.github.io/rCore-Tutorial-Code-2023A/ch5/os/index.html)
+  AND [OS API docs of ch6](https://learningos.github.io/rCore-Tutorial-Code-2023A/ch6/os/index.html)
+- [OS API docs of ch7](https://learningos.github.io/rCore-Tutorial-Code-2023A/ch7/os/index.html)
+  AND [OS API docs of ch8](https://learningos.github.io/rCore-Tutorial-Code-2023A/ch8/os/index.html)
+- [OS API docs of ch9](https://learningos.github.io/rCore-Tutorial-Code-2023A/ch9/os/index.html)
 ### OS API docs of rCore Tutorial Code 2023A
 - [OS API docs of ch1](https://learningos.github.io/rCore-Tutorial-Code-2023A/ch1/os/index.html)
   AND [OS API docs of ch2](https://learningos.github.io/rCore-Tutorial-Code-2023A/ch2/os/index.html)
