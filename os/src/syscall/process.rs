@@ -4,6 +4,8 @@ use crate::{
     task::{
         change_program_brk, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus,
     },
+    timer::get_time_us,
+    mm::translate_virtaddr_to_physaddr,
 };
 
 #[repr(C)]
@@ -41,9 +43,26 @@ pub fn sys_yield() -> isize {
 /// YOUR JOB: get time with second and microsecond
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
-pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
+pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     trace!("kernel: sys_get_time");
-    -1
+    match translate_virtaddr_to_physaddr(ts as usize) {
+        Some(addr) => {
+            let us = get_time_us();
+            trace!("us {}", us);
+            let phys_addr = addr as *mut TimeVal;
+            unsafe {
+                *phys_addr = TimeVal {
+                    sec: us / 1_000_000,
+                    usec: us % 1_000_000,
+                };
+            }
+            0
+        }
+        None => {
+            //println!("translate_virtaddr_to_physaddr fail");
+            -1
+        }
+    }
 }
 
 /// YOUR JOB: Finish sys_task_info to pass testcases
