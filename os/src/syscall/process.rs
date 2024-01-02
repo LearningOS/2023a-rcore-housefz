@@ -57,20 +57,23 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
                 };
             }
             0
-        }
-        None => {
-            //println!("translate_virtaddr_to_physaddr fail");
-            -1
-        }
+        },
+        None => -1
     }
 }
 
 /// YOUR JOB: Finish sys_task_info to pass testcases
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TaskInfo`] is splitted by two pages ?
-pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
-    trace!("kernel: sys_task_info NOT IMPLEMENTED YET!");
-    -1
+pub fn sys_task_info(ti: *mut TaskInfo) -> isize {
+    trace!("kernel: sys_task_info!");
+    match translate_virtaddr_to_physaddr(ti as usize) {
+        Some(addr) => {
+            get_task_info(addr as *mut TaskInfo);
+            0
+        },
+        None => -1
+    }
 }
 
 // YOUR JOB: Implement mmap.

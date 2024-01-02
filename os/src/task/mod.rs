@@ -15,8 +15,6 @@ mod switch;
 mod task;
 
 use crate::loader::{get_app_data, get_num_app};
-use crate::config::{MAX_APP_NUM, MAX_SYSCALL_NUM};
-use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
 use crate::timer::get_time_ms;
 use crate::syscall::TaskInfo;
@@ -83,6 +81,9 @@ impl TaskManager {
         let mut inner = self.inner.exclusive_access();
         let next_task = &mut inner.tasks[0];
         next_task.task_status = TaskStatus::Running;
+        if next_task.start_time == 0 {
+            next_task.start_time = get_time_ms();
+        }
         let next_task_cx_ptr = &next_task.task_cx as *const TaskContext;
         drop(inner);
         let mut _unused = TaskContext::zero_init();
@@ -144,7 +145,7 @@ impl TaskManager {
             let mut inner = self.inner.exclusive_access();
             let current = inner.current_task;
             inner.tasks[next].task_status = TaskStatus::Running;
-            if inner.tasks[next].start_time == 0{
+            if inner.tasks[next].start_time == 0 {
                 inner.tasks[next].start_time = get_time_ms();
             }
             inner.current_task = next;
@@ -165,7 +166,7 @@ impl TaskManager {
         let inner = self.inner.exclusive_access();
         let current = inner.current_task;
         unsafe {
-            (*ti).time = get_time_ms()-inner.tasks[current].start_time;
+            (*ti).time = get_time_ms() - inner.tasks[current].start_time;
             (*ti).status = TaskStatus::Running;
             (*ti).syscall_times = inner.tasks[current].syscall_times;
         }
