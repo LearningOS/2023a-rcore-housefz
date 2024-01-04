@@ -15,6 +15,7 @@ mod switch;
 mod task;
 
 use crate::loader::{get_app_data, get_num_app};
+use crate::mm::{MapPermission, VirtAddr, VPNRange};
 use crate::sync::UPSafeCell;
 use crate::timer::get_time_ms;
 use crate::syscall::TaskInfo;
@@ -173,10 +174,52 @@ impl TaskManager {
         drop(inner);
     }
 
-    fn update_syscall_times(&self, syscall_id: usize){
+    fn update_syscall_times(&self, syscall_id: usize) {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
         inner.tasks[current].syscall_times[syscall_id] += 1;        
+    }
+
+    fn map(&self, start: usize, len: usize, port: usize) -> isize {
+        if VirtAddr(start).aligned() && (port <= 7usize) && (port != 0) {
+            let mut inner = self.inner.exclusive_access();
+            let current = inner.current_task;
+            let (start_va, end_va) = (VirtAddr(start), VirtAddr(start + len));
+            let current_memory_set = &mut inner.tasks[current].memory_set;
+            for vpn in VPNRange::new(start_va.floor(), end_va.ceil()) {
+                match current_memory_set.translate(vpn) {
+                    Some(pte) if pte.is_valid() => return -1,
+                    _ => ()
+                }
+            }
+            let mut map_perm = MapPermission::U;
+            if port & 1 == 1 {
+                map_perm |= MapPermission::R;
+            }
+            if port & 2 == 2 {
+                map_perm |= MapPermission::W;
+            }
+            if port & 4 == 4{
+                map_perm |= MapPermission::X;
+            }
+            current_memory_set.insert_framed_area(start_va, end_va, map_perm);
+            0
+        } else {
+            -1
+        }
+    }
+
+    fn unmap(&self, start: usize, len: usize) -> isize {
+        if VirtAddr(start).aligned() {
+            let mut inner = self.inner.exclusive_access();
+            let current = inner.current_task;
+            let (start_va, end_va) = (VirtAddr(start), VirtAddr(start + len));
+            let current_memory_set = &mut inner.tasks[current].memory_set;
+            let vpn_range = VPNRange::new(start_va.floor(), end_va.ceil());
+            current_memory_set.unmap(vpn_range)
+        } else {
+            -1
+        }
     }
 }
 
@@ -236,4 +279,14 @@ pub fn get_task_info(ti: *mut TaskInfo) {
 /// update syscall times when syscall
 pub fn update_syscall_times(syscall_id: usize) {
     TASK_MANAGER.update_syscall_times(syscall_id);
+}
+
+/// sys_mmap
+pub fn task_mmap(start: usize, len: usize, port: usize) -> isize {
+    TASK_MANAGER.map(start, len, port)
+}
+
+/// sys_mmap
+pub fn task_munmap(start: usize, len: usize) -> isize {
+    TASK_MANAGER.unmap(start, len)
 }
