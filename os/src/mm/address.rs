@@ -191,6 +191,11 @@ impl PhysPageNum {
         let pa: PhysAddr = (*self).into();
         pa.get_mut()
     }
+
+    /// Get physaddr with ppn and offset
+    pub fn get_addr_with_offset(&self, offset: usize) -> usize {
+        ((*self).0 << PAGE_SIZE_BITS) + offset
+    }
 }
 
 /// iterator for phy/virt page number
