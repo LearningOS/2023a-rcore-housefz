@@ -195,9 +195,10 @@ pub fn sys_spawn(path: *const u8) -> isize {
     let current_task = current_task().unwrap();
     let token = current_task.get_user_token();
     let app_name = translated_str(token, path);
-    match get_app_data_by_name(app_name.as_str()){
-        Some(elf_data) => {
-            let new_task = current_task.spawn(elf_data);
+    match open_file(app_name.as_str(), OpenFlags::RDONLY){
+        Some(app_inode) => {
+            let all_data = app_inode.read_all();
+            let new_task = current_task.spawn(all_data.as_slice());
             let new_pid = new_task.pid.0;
             // modify trap context of new_task, because it returns immediately after switching
             let trap_cx = new_task.inner_exclusive_access().get_trap_cx();
