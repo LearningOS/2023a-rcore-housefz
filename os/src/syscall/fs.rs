@@ -1,6 +1,6 @@
 //! File and filesystem-related syscalls
 use crate::fs::{open_file, OpenFlags, Stat};
-use crate::mm::{translated_byte_buffer, translated_str, UserBuffer};
+use crate::mm::{translated_byte_buffer, translated_str, UserBuffer, translate_virtaddr_to_physaddr};
 use crate::task::{current_task, current_user_token};
 
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
@@ -76,12 +76,28 @@ pub fn sys_close(fd: usize) -> isize {
 }
 
 /// YOUR JOB: Implement fstat.
-pub fn sys_fstat(_fd: usize, _st: *mut Stat) -> isize {
+pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
     trace!(
-        "kernel:pid[{}] sys_fstat NOT IMPLEMENTED",
+        "kernel:pid[{}] sys_fstat",
         current_task().unwrap().pid.0
     );
-    -1
+    let task = current_task().unwrap();
+    let inner = task.inner_exclusive_access();
+    match inner.fd_table.get(fd) {
+        None | Some(None) => -1,
+        Some(Some(file)) => {
+            let file = file.clone();
+            drop(inner);
+            match translate_virtaddr_to_physaddr(st as usize) {
+                None => -1,
+                Some(addr) => {
+                    let ptr = addr as *mut Stat;
+                    unsafe { *ptr = file.fstat() };
+                    0
+                    }
+            }
+        }
+    }
 }
 
 /// YOUR JOB: Implement linkat.
