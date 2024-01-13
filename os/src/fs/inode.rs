@@ -9,6 +9,7 @@ use crate::drivers::BLOCK_DEVICE;
 use crate::mm::UserBuffer;
 use crate::sync::UPSafeCell;
 use alloc::sync::Arc;
+use alloc::string::String;
 use alloc::vec::Vec;
 use bitflags::*;
 use easy_fs::{EasyFileSystem, Inode};
@@ -171,4 +172,14 @@ impl File for OSInode {
             pad: [0;7],
         }
     }
+}
+
+/// Call link on ROOT_INODE
+pub fn root_link(old_name: String, new_name: String) {
+    ROOT_INODE.link(old_name, new_name)
+}
+
+/// Call link on ROOT_INODE
+pub fn root_unlink(name: String) -> isize {
+    ROOT_INODE.unlink(name)
 }
