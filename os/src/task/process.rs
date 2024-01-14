@@ -55,7 +55,14 @@ pub struct ProcessControlBlockInner {
     /// mutex_allocation[i] = j means ith mutex is occupied by jth thread
     pub mutex_allocation: Vec<Option<usize>>,
     /// mutex_need[j] = i means jth thread needs ith mutex
-    pub mutex_need: Vec<Option<usize>>
+    pub mutex_need: Vec<Option<usize>>,
+
+    /// semaphore_available
+    pub semaphore_available: Vec<usize>,
+    /// semaphore_allocation[i,j] = 
+    pub semaphore_allocation: Vec<Vec<usize>>,
+    /// semaphore_need
+    pub semaphore_need: Vec<Vec<usize>>,
 }
 
 impl ProcessControlBlockInner {
@@ -129,6 +136,9 @@ impl ProcessControlBlock {
                     deadlock_detect: false,
                     mutex_allocation: Vec::new(),
                     mutex_need: vec![None],
+                    semaphore_available: Vec::new(),
+                    semaphore_allocation: vec![Vec::new()],
+                    semaphore_need: vec![Vec::new()],
                 })
             },
         });
@@ -258,6 +268,9 @@ impl ProcessControlBlock {
                     deadlock_detect: false,
                     mutex_allocation: Vec::new(),
                     mutex_need: vec![None],
+                    semaphore_available: Vec::new(),
+                    semaphore_allocation: vec![Vec::new()],
+                    semaphore_need: vec![Vec::new()],
                 })
             },
         });
@@ -330,6 +343,55 @@ impl ProcessControlBlock {
                     }
                 }
                 if flag {
+                    inner.mutex_need[tid] = None;
+                    return true;
+                }
+            }
+            false
+        } else {
+            false
+        }
+    }
+
+    pub fn semaphore_deadlock_detect(&self, tid: usize, sem_id: usize) -> bool {
+        let mut inner = self.inner_exclusive_access();
+        inner.semaphore_need[tid][sem_id] += 1;
+        if inner.deadlock_detect {
+            let len = inner.thread_count();
+            let sem_len = inner.semaphore_available.len();
+            if sem_len == 0 {
+                return false;
+            }
+            let mut work = inner.semaphore_available.clone();
+            let mut finish = vec![false; len];
+            //println!("start");
+            //println!("avail: {:?}", inner.semaphore_available);
+            //println!("need: {:?}", inner.semaphore_need);
+            //println!("alloc: {:?}", inner.semaphore_allocation);
+            for _ in 0..len {
+                let mut flag = true;
+                for i in 0..len {
+                    if !finish[i] {
+                        let mut flag2 = true;
+                        for (j, g) in inner.semaphore_need[i].iter().enumerate() {
+                            if *g > work[j] {
+                                flag2 = false;
+                                break;
+                            }
+                        }
+                        if flag2 {
+                            //println!("find {}", i);
+                            finish[i] = true;
+                            flag = false;
+                            for (j, g) in inner.semaphore_allocation[i].iter().enumerate() {
+                                work[j] += g;
+                            }
+                            break;
+                        }
+                    }
+                }
+                if flag {
+                    inner.semaphore_need[tid][sem_id] -= 1;
                     return true;
                 }
             }
