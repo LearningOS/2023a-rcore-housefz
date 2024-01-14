@@ -49,9 +49,11 @@ pub fn sys_mutex_create(blocking: bool) -> isize {
         .map(|(id, _)| id)
     {
         process_inner.mutex_list[id] = mutex;
+        process_inner.mutex_allocation[id] = None;
         id as isize
     } else {
         process_inner.mutex_list.push(mutex);
+        process_inner.mutex_allocation.push(None);
         process_inner.mutex_list.len() as isize - 1
     }
 }
@@ -68,13 +70,26 @@ pub fn sys_mutex_lock(mutex_id: usize) -> isize {
             .unwrap()
             .tid
     );
+    let tid = current_task().unwrap().inner_exclusive_access().res.as_ref().unwrap().tid;
     let process = current_process();
     let process_inner = process.inner_exclusive_access();
     let mutex = Arc::clone(process_inner.mutex_list[mutex_id].as_ref().unwrap());
     drop(process_inner);
-    drop(process);
-    mutex.lock();
-    0
+    if process.mutex_deadlock_detect(tid, mutex_id) {
+        let mut process_inner = process.inner_exclusive_access();
+        process_inner.mutex_need[tid] = None;
+        drop(process_inner);
+        drop(process);
+        -0xDEAD
+    } else {
+        drop(process);
+        mutex.lock();
+        let process = current_process();
+        let mut process_inner = process.inner_exclusive_access();
+        process_inner.mutex_allocation[mutex_id] = Some(tid);
+        process_inner.mutex_need[tid] = None;
+        0
+    }
 }
 /// mutex unlock syscall
 pub fn sys_mutex_unlock(mutex_id: usize) -> isize {
@@ -95,6 +110,9 @@ pub fn sys_mutex_unlock(mutex_id: usize) -> isize {
     drop(process_inner);
     drop(process);
     mutex.unlock();
+    let process = current_process();
+    let mut process_inner = process.inner_exclusive_access();
+    process_inner.mutex_allocation[mutex_id] = None;
     0
 }
 /// semaphore create syscall
@@ -245,7 +263,13 @@ pub fn sys_condvar_wait(condvar_id: usize, mutex_id: usize) -> isize {
 /// enable deadlock detection syscall
 ///
 /// YOUR JOB: Implement deadlock detection, but might not all in this syscall
-pub fn sys_enable_deadlock_detect(_enabled: usize) -> isize {
+pub fn sys_enable_deadlock_detect(enabled: usize) -> isize {
     trace!("kernel: sys_enable_deadlock_detect NOT IMPLEMENTED");
-    -1
+    let process = current_process();
+    let mut process_inner = process.inner_exclusive_access();
+    match enabled {
+        0 => {process_inner.deadlock_detect = false; 0},
+        1 => {process_inner.deadlock_detect = true; 0},
+        _ => -1
+    }
 }

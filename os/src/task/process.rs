@@ -49,6 +49,13 @@ pub struct ProcessControlBlockInner {
     pub semaphore_list: Vec<Option<Arc<Semaphore>>>,
     /// condvar list
     pub condvar_list: Vec<Option<Arc<Condvar>>>,
+
+    /// if deadlock detect
+    pub deadlock_detect: bool,
+    /// mutex_allocation[i] = j means ith mutex is occupied by jth thread
+    pub mutex_allocation: Vec<Option<usize>>,
+    /// mutex_need[j] = i means jth thread needs ith mutex
+    pub mutex_need: Vec<Option<usize>>
 }
 
 impl ProcessControlBlockInner {
@@ -119,6 +126,9 @@ impl ProcessControlBlock {
                     mutex_list: Vec::new(),
                     semaphore_list: Vec::new(),
                     condvar_list: Vec::new(),
+                    deadlock_detect: false,
+                    mutex_allocation: Vec::new(),
+                    mutex_need: vec![None],
                 })
             },
         });
@@ -245,6 +255,9 @@ impl ProcessControlBlock {
                     mutex_list: Vec::new(),
                     semaphore_list: Vec::new(),
                     condvar_list: Vec::new(),
+                    deadlock_detect: false,
+                    mutex_allocation: Vec::new(),
+                    mutex_need: vec![None],
                 })
             },
         });
@@ -281,5 +294,48 @@ impl ProcessControlBlock {
     /// get pid
     pub fn getpid(&self) -> usize {
         self.pid.0
+    }
+}
+
+impl ProcessControlBlock {
+    pub fn mutex_deadlock_detect(&self, tid: usize, mutex_id: usize) -> bool {
+        let mut inner = self.inner_exclusive_access();
+        inner.mutex_need[tid] = Some(mutex_id);
+        if inner.deadlock_detect {
+            let len = inner.thread_count();
+            let mut work: Vec<bool> = inner.mutex_allocation.iter().map(|&x| matches!(x, None)).collect();
+            //println!("{:?}", work);
+            let mutex_num = work.len();
+            let mut finish = vec![false; len];
+            for _ in 0..len {
+                //println!("l: {}", l);
+                let mut flag = true;
+                for i in 0..len {                    
+                    if !finish[i] {
+                        match inner.mutex_need[i] {
+                            Some(x) if !work[x] => (),
+                            _ => {
+                                //println!("find {} in l: {}", i, l);
+                                finish[i] = true;
+                                flag = false;
+                                for j in 0..mutex_num {
+                                    match inner.mutex_allocation[j] {
+                                        Some(y) if y == i => work[j] = true,
+                                        _ => ()
+                                    }
+                                }
+                                break;
+                            } 
+                        }
+                    }
+                }
+                if flag {
+                    return true;
+                }
+            }
+            false
+        } else {
+            false
+        }
     }
 }
